@@ -12,12 +12,10 @@ const config = {
   physics: {
     default: 'arcade',
     arcade: {
-      debug: false
+      debug: true
     }
   },
   scene: [PreloadScene, PlayScene]
 };
-
-console.log('Скоро динозавр побежит...');
 
 new Phaser.Game(config);
