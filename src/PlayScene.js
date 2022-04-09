@@ -9,6 +9,7 @@ class PlayScene extends Phaser.Scene {
     const { height, width } = this.game.config;
     this.gameSpeed = 10;
     this.isGameRunning = false;
+    this.respawnTime = 0;
     
     this.startTrigger = this.physics.add.sprite(0, 10).setOrigin(0, 1).setImmovable();
     this.ground = this.add.tileSprite(0, height, 88, 26, 'ground').setOrigin(0, 1);
@@ -18,6 +19,7 @@ class PlayScene extends Phaser.Scene {
         // применим силу тяжести к Дино
         .setGravityY(5000)
         .setOrigin(0, 1);
+    this.obsticles = this.physics.add.group();
    
     this.createControll();
     this.initStartTrigger();
@@ -69,11 +71,47 @@ class PlayScene extends Phaser.Scene {
     }, null, this);
   }
 
-  update() {
+  placeObsticle() {
+    const { width, height } = this.game.config;
+    const obsticleNum = Math.floor(Math.random() * 7) + 1;
+    const distance = Phaser.Math.Between(600, 900);
+
+    let obsticle;
+    if (obsticleNum > 6) {
+      // Птеродактиль может лететь на разной высоте
+      const enemyHeight = [50, 70];
+      obsticle = this.obsticles.create(width + distance, height - enemyHeight[Math.floor(Math.random() * 2)], `enemy-bird`)
+        .setOrigin(0, 1)
+      obsticle.play('enemy-dino-fly', 1);
+      obsticle.body.height = obsticle.body.height / 1.5;
+    } else {
+      // Если вы посмотрите в нашу статику,
+      // то там есть 6 разных вариантов отрисовки кактусов,
+      // именно поэтому картинка спрайта obsticle-${obsticleNum}
+      obsticle = this.obsticles.create(width + distance, height, `obsticle-${obsticleNum}`)
+        .setOrigin(0, 1);
+
+      obsticle.body.offset.y = +10;
+    }
+
+    obsticle.setImmovable();
+  }
+
+  update(time, delta) {
     // Ничего не делаем, если игра не началась
     if (!this.isGameRunning) { return; }
 
     this.ground.tilePositionX += this.gameSpeed;
+    Phaser.Actions.IncX(this.obsticles.getChildren(), -this.gameSpeed);
+
+    // delta - время, которое прошло с момента прошлого фрейма
+    this.respawnTime += delta * this.gameSpeed * 0.08;
+    if (this.respawnTime >= 1500) {
+      this.placeObsticle();
+      // после того как создадим препятствие,
+      // надо бы обнулить таймер до следующей пачки
+      this.respawnTime = 0;
+    }
 
     if (this.dino.body.deltaAbsY() > 0) {
       this.dino.anims.stop();
@@ -122,6 +160,13 @@ class PlayScene extends Phaser.Scene {
       key: 'dino-down-anim',
       frames: this.anims.generateFrameNumbers('dino-down', {start: 0, end: 1}),
       frameRate: 10,
+      repeat: -1
+    });
+
+    this.anims.create({
+      key: 'enemy-dino-fly',
+      frames: this.anims.generateFrameNumbers('enemy-bird', {start: 0, end: 1}),
+      frameRate: 6,
       repeat: -1
     });
    }
