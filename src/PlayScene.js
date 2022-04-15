@@ -7,7 +7,7 @@ class PlayScene extends Phaser.Scene {
 
   create() {
     const { height, width } = this.game.config;
-    this.gameSpeed = 10;
+    this.gameSpeed = 20;
     this.isGameRunning = false;
     this.respawnTime = 0;
     
@@ -20,10 +20,31 @@ class PlayScene extends Phaser.Scene {
         .setGravityY(5000)
         .setOrigin(0, 1);
     this.obsticles = this.physics.add.group();
+
+    this.gameOverScreen = this.add.container(width / 2, height / 2 - 50).setAlpha(0);
+    this.gameOverText = this.add.image(0, 0, 'game-over');
+    this.restart = this.add.image(0, 80, 'restart').setInteractive();
+    
+    this.gameOverScreen.add([
+      this.gameOverText,  this.restart
+    ]);
    
+    this.initAnims();
+    this.initColliders();
     this.createControll();
     this.initStartTrigger();
-    this.initAnims();
+  }
+
+  initColliders() {
+    this.physics.add.collider(this.dino, this.obsticles, () => {
+      this.physics.pause();
+      this.isGameRunning = false;
+      this.anims.pauseAll();
+      this.dino.setTexture('dino-hurt');
+      this.respawnTime = 0;
+      this.gameSpeed = 20;
+      this.gameOverScreen.setAlpha(1);
+    }, null, this);
   }
 
   initStartTrigger() {
@@ -74,7 +95,7 @@ class PlayScene extends Phaser.Scene {
   placeObsticle() {
     const { width, height } = this.game.config;
     const obsticleNum = Math.floor(Math.random() * 7) + 1;
-    const distance = Phaser.Math.Between(600, 900);
+    const distance = Phaser.Math.Between(800, 1100);
 
     let obsticle;
     if (obsticleNum > 6) {
@@ -91,7 +112,7 @@ class PlayScene extends Phaser.Scene {
       obsticle = this.obsticles.create(width + distance, height, `obsticle-${obsticleNum}`)
         .setOrigin(0, 1);
 
-      obsticle.body.offset.y = +10;
+      obsticle.body.offset.y = +20;
     }
 
     obsticle.setImmovable();
@@ -113,6 +134,14 @@ class PlayScene extends Phaser.Scene {
       this.respawnTime = 0;
     }
 
+    this.obsticles.getChildren().forEach(obsticle => {
+      // Если препятствие вышло за границы
+      if (obsticle.getBounds().right < 0) {
+        // Метод для вызова деструктора
+        obsticle.destroy();
+      }
+    });
+
     if (this.dino.body.deltaAbsY() > 0) {
       this.dino.anims.stop();
       this.dino.setTexture('dino', 0);
@@ -124,6 +153,17 @@ class PlayScene extends Phaser.Scene {
   }
 
   createControll() {
+    this.restart.on('pointerdown', () => {
+      this.dino.setVelocityY(0);
+      this.dino.body.height = 92;
+      this.dino.body.offset.y = 0;
+      this.physics.resume();
+      this.obsticles.clear(true, true);
+      this.isGameRunning = true;
+      this.gameOverScreen.setAlpha(0);
+      this.anims.resumeAll();
+    });
+
     this.input.keyboard.on('keydown-SPACE', () => {
       if (!this.dino.body.onFloor()) { return; }
       
