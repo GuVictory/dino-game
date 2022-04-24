@@ -6,6 +6,8 @@
 
 Это репозиторий, в котором живет игра с бегущим динозвариком
 
+<a href="https://ibb.co/nBjJSfB"><img src="https://i.ibb.co/jzDXFGz/Screen-Recording-2022-04-24-at-18-57-33.gif" alt="Dino game" border="0"></a>
+
 ## Как запустить?
 
 Для запуска проекта нужно:
