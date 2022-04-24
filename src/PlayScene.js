@@ -12,6 +12,10 @@ class PlayScene extends Phaser.Scene {
     this.respawnTime = 0;
     this.score = 0;
     
+    this.jumpSound = this.sound.add('jump', {volume: 0.2});
+    this.hitSound = this.sound.add('hit', {volume: 0.2});
+    this.reachSound = this.sound.add('reach', {volume: 0.2});
+
     this.startTrigger = this.physics.add.sprite(0, 10).setOrigin(0, 1).setImmovable();
     this.ground = this.add.tileSprite(0, height, 88, 26, 'ground').setOrigin(0, 1);
 
@@ -19,6 +23,8 @@ class PlayScene extends Phaser.Scene {
         .setCollideWorldBounds(true)
         // применим силу тяжести к Дино
         .setGravityY(5000)
+        .setBodySize(44, 92)
+        .setDepth(1)
         .setOrigin(0, 1);
     this.obsticles = this.physics.add.group();
 
@@ -34,13 +40,21 @@ class PlayScene extends Phaser.Scene {
       resolution: 5
     }).setOrigin(1, 0).setAlpha(0);
 
-    this.gameOverScreen = this.add.container(width / 2, height / 2 - 50).setAlpha(0);
+    this.gameOverScreen = this.add.container(width / 2, height / 2 - 50).setDepth(1).setAlpha(0);
     this.gameOverText = this.add.image(0, 0, 'game-over');
     this.restart = this.add.image(0, 80, 'restart').setInteractive();
     
     this.gameOverScreen.add([
       this.gameOverText,  this.restart
     ]);
+
+    this.environment = this.add.group();
+    this.environment.addMultiple([
+      this.add.image(width / 2, 170, 'cloud'),
+      this.add.image(width - 80, 80, 'cloud'),
+        this.add.image((width / 1.3), 100, 'cloud')
+    ]);
+    this.environment.setAlpha(0);
    
     this.initAnims();
     this.initColliders();
@@ -67,6 +81,7 @@ class PlayScene extends Phaser.Scene {
       this.gameSpeed = 20;
       this.gameOverScreen.setAlpha(1);
       this.score = 0;
+      this.hitSound.play();
     }, null, this);
   }
 
@@ -108,6 +123,7 @@ class PlayScene extends Phaser.Scene {
             this.isGameRunning = true;
             this.dino.setVelocityX(0);
             this.scoreText.setAlpha(1);
+            this.environment.setAlpha(1);
             startEvent.remove();
           }
         }
@@ -153,6 +169,10 @@ class PlayScene extends Phaser.Scene {
         this.score++;
         this.gameSpeed += 0.01
 
+        if (this.score % 100 === 0) {
+          this.reachSound.play();
+        }
+
         const score = Array.from(String(this.score), Number);
         for (let i = 0; i < 5 - String(this.score).length; i++) {
           score.unshift(0);
@@ -169,6 +189,7 @@ class PlayScene extends Phaser.Scene {
 
     this.ground.tilePositionX += this.gameSpeed;
     Phaser.Actions.IncX(this.obsticles.getChildren(), -this.gameSpeed);
+    Phaser.Actions.IncX(this.environment.getChildren(), -3);
 
     // delta - время, которое прошло с момента прошлого фрейма
     this.respawnTime += delta * this.gameSpeed * 0.08;
@@ -186,6 +207,18 @@ class PlayScene extends Phaser.Scene {
         obsticle.destroy();
       }
     });
+
+    this.environment.getChildren().forEach(env => {
+      if (env.getBounds().right < 0) {
+        env.x = this.game.config.width + 30;
+      }
+    });
+
+    this.environment.getChildren().forEach(env => {
+      if (env.getBounds().right < 0) {
+        env.x = this.game.config.width + 30;
+      }
+    })
 
     if (this.dino.body.deltaAbsY() > 0) {
       this.dino.anims.stop();
@@ -210,8 +243,11 @@ class PlayScene extends Phaser.Scene {
     });
 
     this.input.keyboard.on('keydown-SPACE', () => {
-      if (!this.dino.body.onFloor()) { return; }
+      if (!this.dino.body.onFloor() || this.dino.body.velocity.x > 0) { return; }
       
+      // Воспроизведем звук
+      this.jumpSound.play();
+
       this.dino.body.height = 92;
       this.dino.body.offset.y = 0;
 
@@ -220,7 +256,7 @@ class PlayScene extends Phaser.Scene {
     });
 
     this.input.keyboard.on('keydown-DOWN', () => {
-      if (!this.dino.body.onFloor()) { return; }
+      if (!this.dino.body.onFloor() || !this.isGameRunning) { return; }
 
       this.dino.body.height = 58;
       this.dino.body.offset.y = 34;
